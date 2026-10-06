@@ -1,0 +1,17 @@
+#Compiled binary
+myls
+
+# Object files
+*.o
+
+# Editor backup files
+*~
+*.swp
+
+# Core dumps
+core
+core.*
+
+# Temporary test output
+q.txt
+w.txt
