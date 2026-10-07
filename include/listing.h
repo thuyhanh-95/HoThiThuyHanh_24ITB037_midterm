@@ -7,13 +7,13 @@
 #include "options.h"
 
 typedef struct {
-    char *name;
-    char *path;
-    struct stat st;
-} FileEntry;
+    char *label;
+    char *full_name;
+    struct stat info;
+} ListingItem;
 
-int list_path(const char *path, const Options *options);
-
-int list_directory(const char *path, const Options *options);
+int run_target(const char *target, const Config *cfg);
+int run_directory(const char *directory, const Config *cfg);
 
 #endif
+

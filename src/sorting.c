@@ -1,103 +1,78 @@
+#include "sorting.h"
+
 #include <string.h>
 #include <time.h>
-#include "sorting.h"
-#include <stdlib.h>
-static int
-compare_name(const void *a, const void *b)
-{
-    const FileEntry *ea = a;
-    const FileEntry *eb = b;
 
-    return strcmp(ea->name, eb->name);
+static time_t selected_time(const ListingItem *item, const Config *cfg)
+{
+    if ((cfg->flags & OPT_CTIME) != 0u) {
+        return item->info.st_ctime;
+    }
+    if ((cfg->flags & OPT_ATIME) != 0u) {
+        return item->info.st_atime;
+    }
+    return item->info.st_mtime;
 }
 
-static int
-compare_size(const void *a, const void *b)
+static int compare_items(const ListingItem *left,
+                         const ListingItem *right,
+                         const Config *cfg)
 {
-    const FileEntry *ea = a;
-    const FileEntry *eb = b;
+    int result;
 
-    if (ea->st.st_size < eb->st.st_size) {
-        return 1;
-    }
-
-    if (ea->st.st_size > eb->st.st_size) {
-        return -1;
-    }
-
-    return strcmp(ea->name, eb->name);
-}
-
-static int time_mode = 0;
-
-static int
-compare_time(const void *a, const void *b)
-{
-    const FileEntry *ea = a;
-    const FileEntry *eb = b;
-    time_t ta;
-    time_t tb;
-
-    if (time_mode == 1) {
-        ta = ea->st.st_atime;
-        tb = eb->st.st_atime;
-    } else if (time_mode == 2) {
-        ta = ea->st.st_ctime;
-        tb = eb->st.st_ctime;
-    } else {
-        ta = ea->st.st_mtime;
-        tb = eb->st.st_mtime;
-    }
-
-    if (ta < tb) {
-        return 1;
-    }
-
-    if (ta > tb) {
-        return -1;
-    }
-
-    return strcmp(ea->name, eb->name);
-}
-void
-sort_entries(FileEntry *entries, size_t count,
-              const Options *options)
-{
-    if (entries == NULL || options == NULL || count < 2) {
-        return;
-    }
-
-    if (options->no_sort) {
-        return;
-    }
-
-    if (options->sort_size) {
-        qsort(entries, count, sizeof(FileEntry), compare_size);
-    } else if (options->sort_time) {
-	if (options->use_ctime) {
-        	time_mode = 2;
-    	} else if (options->use_atime) {
-        	time_mode = 1;
-    	} else {
-        	time_mode = 0;
-    	}
-
-        qsort(entries, count, sizeof(FileEntry), compare_time);
-    } else {
-        qsort(entries, count, sizeof(FileEntry), compare_name);
-    }
-
-    if (options->reverse) {
-        size_t left = 0;
-        size_t right = count - 1;
-
-        while (left < right) {
-            FileEntry temp = entries[left];
-            entries[left] = entries[right];
-            entries[right] = temp;
-
-            ++left;
-            --right;
+    if ((cfg->flags & OPT_SIZE_SORT) != 0u) {
+        if (left->info.st_size < right->info.st_size) {
+            result = 1;
+        } else if (left->info.st_size > right->info.st_size) {
+            result = -1;
+        } else {
+            result = strcmp(left->label, right->label);
         }
+    } else if ((cfg->flags & OPT_TIME_SORT) != 0u) {
+        time_t lt = selected_time(left, cfg);
+        time_t rt = selected_time(right, cfg);
+
+        if (lt < rt) {
+            result = 1;
+        } else if (lt > rt) {
+            result = -1;
+        } else {
+            result = strcmp(left->label, right->label);
+        }
+    } else {
+        result = strcmp(left->label, right->label);
+    }
+
+    if ((cfg->flags & OPT_REVERSE) != 0u) {
+        result = -result;
+    }
+
+    return result;
+}
+
+void reorder_items(ListingItem *items, size_t length, const Config *cfg)
+{
+    size_t i;
+
+    if (items == NULL || cfg == NULL || length < 2) {
+        return;
+    }
+
+    if ((cfg->flags & OPT_NO_SORT) != 0u) {
+        return;
+    }
+
+    for (i = 1; i < length; ++i) {
+        ListingItem saved = items[i];
+        size_t j = i;
+
+        while (j > 0 &&
+               compare_items(&items[j - 1], &saved, cfg) > 0) {
+            items[j] = items[j - 1];
+            --j;
+        }
+
+        items[j] = saved;
     }
 }
+

@@ -4,11 +4,9 @@
 #include "listing.h"
 #include "options.h"
 
-void print_entry(const FileEntry *entry, const Options *options);
+long long blocks_for(const ListingItem *item, const Config *cfg);
+void render_item(const ListingItem *item, const Config *cfg);
+void render_total(long long total, const Config *cfg);
 
-long long entry_blocks(const FileEntry *entry,
-                       const Options *options);
-
-void print_total(long long total,
-                 const Options *options);
 #endif
+

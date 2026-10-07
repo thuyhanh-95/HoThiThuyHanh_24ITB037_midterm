@@ -6,7 +6,7 @@
 #include "listing.h"
 #include "options.h"
 
-void sort_entries(FileEntry *entries, size_t count,
-                  const Options *options);
+void reorder_items(ListingItem *items, size_t length, const Config *cfg);
 
 #endif
+

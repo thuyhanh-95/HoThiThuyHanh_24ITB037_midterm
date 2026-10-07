@@ -1,135 +1,123 @@
+#define _POSIX_C_SOURCE 200809L
+
+#include "display.h"
 #include "listing.h"
 #include "options.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 typedef struct {
     char *path;
-    int is_directory;
-} Operand;
+    int directory;
+} Target;
 
-static int
-compare_operands(const void *a, const void *b)
+static int target_before(const Target *a, const Target *b)
 {
-    const Operand *oa = a;
-    const Operand *ob = b;
-
-    if (oa->is_directory != ob->is_directory) {
-        return oa->is_directory - ob->is_directory;
+    if (a->directory != b->directory) {
+        return a->directory < b->directory;
     }
-
-    return strcmp(oa->path, ob->path);
+    return strcmp(a->path, b->path) < 0;
 }
 
-static void
-reverse_operands(Operand *operands, size_t count)
+static void order_targets(Target *targets,
+                          size_t count,
+                          const Config *cfg)
 {
-    size_t left = 0;
-    size_t right;
+    size_t i;
 
-    if (count == 0) {
+    if (targets == NULL || cfg == NULL || count < 2 ||
+        (cfg->flags & OPT_NO_SORT) != 0u) {
         return;
     }
 
-    right = count - 1;
+    for (i = 1; i < count; ++i) {
+        Target picked = targets[i];
+        size_t j = i;
 
-    while (left < right) {
-        Operand temp = operands[left];
-
-        operands[left] = operands[right];
-        operands[right] = temp;
-
-        ++left;
-        --right;
+        while (j > 0 && target_before(&picked, &targets[j - 1])) {
+            targets[j] = targets[j - 1];
+            --j;
+        }
+        targets[j] = picked;
     }
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    Options options;
-    int first_operand;
-    int exit_status = 0;
-    int operand_count;
-    Operand *operands;
+    Config cfg;
+    int first;
+    int count;
+    Target *targets;
     int i;
+    int status = 0;
 
-    options_init(&options);
+    config_init(&cfg);
+    first = config_read(&cfg, argc, argv);
 
-    first_operand = options_parse(&options, argc, argv);
-
-    if (first_operand < 0) {
-        return 2;
-    }
-
-    if (first_operand == argc) {
-        return list_directory(".", &options);
-    }
-
-    operand_count = argc - first_operand;
-
-    operands = calloc((size_t)operand_count,
-                      sizeof(*operands));
-
-    if (operands == NULL) {
-        fprintf(stderr,
-                "myls: memory allocation failed\n");
+    if (first < 0) {
         return 1;
     }
 
-    for (i = 0; i < operand_count; ++i) {
+    if (first == argc) {
+        return run_target(".", &cfg);
+    }
+
+    count = argc - first;
+    targets = calloc((size_t)count, sizeof(*targets));
+    if (targets == NULL) {
+        fprintf(stderr, "myls: memory allocation failed\n");
+        return 1;
+    }
+
+    for (i = 0; i < count; ++i) {
         struct stat st;
 
-        operands[i].path = argv[first_operand + i];
-
-        if (lstat(operands[i].path, &st) == -1) {
-            operands[i].is_directory = 0;
-            continue;
-        }
-
-        operands[i].is_directory =
-            !options.directory && S_ISDIR(st.st_mode);
-    }
-
-    if (!options.no_sort) {
-        qsort(operands,
-              (size_t)operand_count,
-              sizeof(*operands),
-              compare_operands);
-
-        if (options.reverse) {
-            reverse_operands(operands,
-                             (size_t)operand_count);
+        targets[i].path = argv[first + i];
+        targets[i].directory = 0;
+        if (lstat(targets[i].path, &st) == 0) {
+            targets[i].directory = S_ISDIR(st.st_mode);
         }
     }
 
-    for (i = 0; i < operand_count; ++i) {
-        int status;
+    order_targets(targets, (size_t)count, &cfg);
 
-        if (operand_count > 1 &&
-            operands[i].is_directory) {
-            if (i > 0) {
-                printf("\n");
+    for (i = 0; i < count; ++i) {
+        if (targets[i].directory &&
+            (cfg.flags & OPT_DIR_ONLY) == 0u) {
+            if (count > 1) {
+                if (i != 0) {
+                    putchar('\n');
+                }
+                printf("%s:\n", targets[i].path);
             }
 
-            printf("%s:\n", operands[i].path);
-
-            status = list_directory(operands[i].path,
-                                    &options);
+            if (run_directory(targets[i].path, &cfg) != 0) {
+                status = 1;
+            }
         } else {
-            status = list_path(operands[i].path,
-                               &options);
-        }
+            ListingItem item;
+            struct stat st;
 
-        if (status != 0) {
-            exit_status = 1;
+            if (lstat(targets[i].path, &st) == -1) {
+                fprintf(stderr, "myls: %s: %s\n",
+                        targets[i].path, strerror(errno));
+                status = 1;
+                continue;
+            }
+
+            item.label = targets[i].path;
+            item.full_name = targets[i].path;
+            item.info = st;
+            render_item(&item, &cfg);
         }
     }
 
-    free(operands);
-
-    return exit_status;
+    free(targets);
+    return status;
 }
+

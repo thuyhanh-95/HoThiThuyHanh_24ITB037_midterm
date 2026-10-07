@@ -1,133 +1,104 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "options.h"
 
 #include <stdio.h>
 #include <unistd.h>
 
-void
-options_init(Options *options)
+static void set_flag(Config *cfg, unsigned int bit)
 {
-    if (options == NULL) {
-        return;
-    }
-
-    options->all = 0;
-    options->almost_all = 0;
-    options->use_ctime = 0;
-    options->directory = 0;
-    options->classify = 0;
-    options->no_sort = 0;
-    options->human_readable = 0;
-    options->inode = 0;
-    options->kilobytes = 0;
-    options->long_format = 0;
-    options->numeric_ids = 0;
-    options->quote = 0;
-    options->recursive = 0;
-    options->reverse = 0;
-    options->sort_size = 0;
-    options->blocks = 0;
-    options->sort_time = 0;
-    options->use_atime = 0;
-    options->raw = 0;
+    cfg->flags |= bit;
 }
 
-int
-options_parse(Options *options, int argc, char *argv[])
+static void clear_flag(Config *cfg, unsigned int bit)
 {
-    int opt;
+    cfg->flags &= ~bit;
+}
 
-    if (options == NULL) {
+void config_init(Config *cfg)
+{
+    if (cfg != NULL) {
+        cfg->flags = 0u;
+    }
+}
+
+int config_read(Config *cfg, int argc, char **argv)
+{
+    int ch;
+
+    if (cfg == NULL) {
         return -1;
     }
 
-    while ((opt = getopt(argc, argv, "AacdFfhiklnqRrSstuw")) != -1) {
-        switch (opt) {
+    while ((ch = getopt(argc, argv, "AacdFfhiklnqRrSstuw")) != -1) {
+        switch (ch) {
         case 'A':
-            options->almost_all = 1;
+            set_flag(cfg, OPT_ALMOST);
             break;
-
         case 'a':
-            options->all = 1;
+            set_flag(cfg, OPT_ALL);
             break;
-
         case 'c':
-            options->use_ctime = 1;
-            options->use_atime = 0;
+            set_flag(cfg, OPT_CTIME);
+            clear_flag(cfg, OPT_ATIME);
             break;
-
         case 'd':
-            options->directory = 1;
-	    options->recursive = 0;
+            set_flag(cfg, OPT_DIR_ONLY);
+            clear_flag(cfg, OPT_RECURSIVE);
             break;
-
         case 'F':
-            options->classify = 1;
+            set_flag(cfg, OPT_CLASSIFY);
             break;
-
         case 'f':
-            options->no_sort = 1;
+            set_flag(cfg, OPT_NO_SORT);
             break;
-
         case 'h':
-            options->human_readable = 1;
-            options->kilobytes = 0;
+            set_flag(cfg, OPT_HUMAN);
+            clear_flag(cfg, OPT_KILOBYTES);
             break;
-
         case 'i':
-            options->inode = 1;
+            set_flag(cfg, OPT_INODE);
             break;
-
         case 'k':
-            options->kilobytes = 1;
-            options->human_readable = 0;
+            set_flag(cfg, OPT_KILOBYTES);
+            clear_flag(cfg, OPT_HUMAN);
             break;
-
         case 'l':
-            options->long_format = 1;
-	    options->numeric_ids = 0;
+            set_flag(cfg, OPT_LONG);
+            clear_flag(cfg, OPT_NUMERIC);
             break;
-
         case 'n':
-            options->long_format = 1;
-            options->numeric_ids = 1;
+            set_flag(cfg, OPT_LONG);
+            set_flag(cfg, OPT_NUMERIC);
             break;
-
         case 'q':
-            options->quote = 1;
-            options->raw = 0;
+            set_flag(cfg, OPT_QUOTE);
+            clear_flag(cfg, OPT_RAW);
             break;
-
         case 'R':
-            options->recursive = 1;
-            options->directory = 0;
+            set_flag(cfg, OPT_RECURSIVE);
+            clear_flag(cfg, OPT_DIR_ONLY);
             break;
-
         case 'r':
-            options->reverse = 1;
+            set_flag(cfg, OPT_REVERSE);
             break;
-
         case 'S':
-            options->sort_size = 1;
+            set_flag(cfg, OPT_SIZE_SORT);
             break;
-
         case 's':
-            options->blocks = 1;
+            set_flag(cfg, OPT_BLOCKS);
             break;
-
         case 't':
-            options->sort_time = 1;
+            set_flag(cfg, OPT_TIME_SORT);
             break;
-
         case 'u':
-            options->use_atime = 1;
-            options->use_ctime = 0;
+            set_flag(cfg, OPT_ATIME);
+            clear_flag(cfg, OPT_CTIME);
             break;
-
         case 'w':
-            options->raw = 1;
-            options->quote = 0;
+            set_flag(cfg, OPT_RAW);
+            clear_flag(cfg, OPT_QUOTE);
             break;
-
         default:
             fprintf(stderr,
                     "usage: myls [-AacdFfhiklnqRrSstuw] [file ...]\n");
@@ -137,3 +108,4 @@ options_parse(Options *options, int argc, char *argv[])
 
     return optind;
 }
+

@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "display.h"
 
 #include <ctype.h>
@@ -5,98 +7,62 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
-static char
-file_type(mode_t mode)
-{
-    if (S_ISREG(mode)) {
-        return '-';
-    }
-
-    if (S_ISDIR(mode)) {
-        return 'd';
-    }
-
-    if (S_ISLNK(mode)) {
-        return 'l';
-    }
-
-    if (S_ISCHR(mode)) {
-        return 'c';
-    }
-
-    if (S_ISBLK(mode)) {
-        return 'b';
-    }
-
-    if (S_ISFIFO(mode)) {
-        return 'p';
-    }
-
-    if (S_ISSOCK(mode)) {
-        return 's';
-    }
-
-#ifdef S_ISWHT
-    if (S_ISWHT(mode)) {
-        return 'w';
-    }
+#if defined(__linux__)
+#include <sys/sysmacros.h>
 #endif
 
+static char type_char(mode_t mode)
+{
+    if (S_ISREG(mode)) return '-';
+    if (S_ISDIR(mode)) return 'd';
+    if (S_ISLNK(mode)) return 'l';
+    if (S_ISCHR(mode)) return 'c';
+    if (S_ISBLK(mode)) return 'b';
+    if (S_ISFIFO(mode)) return 'p';
+#ifdef S_ISSOCK
+    if (S_ISSOCK(mode)) return 's';
+#endif
+#ifdef S_ISWHT
+    if (S_ISWHT(mode)) return 'w';
+#endif
     return '-';
 }
 
-static void
-format_mode(mode_t mode, char *buffer)
+static void make_mode(mode_t mode, char out[11])
 {
-    buffer[0] = file_type(mode);
-
-    buffer[1] = (mode & S_IRUSR) ? 'r' : '-';
-    buffer[2] = (mode & S_IWUSR) ? 'w' : '-';
-
-    if (mode & S_ISUID) {
-        buffer[3] = (mode & S_IXUSR) ? 's' : 'S';
-    } else {
-        buffer[3] = (mode & S_IXUSR) ? 'x' : '-';
-    }
-
-    buffer[4] = (mode & S_IRGRP) ? 'r' : '-';
-    buffer[5] = (mode & S_IWGRP) ? 'w' : '-';
-
-    if (mode & S_ISGID) {
-        buffer[6] = (mode & S_IXGRP) ? 's' : 'S';
-    } else {
-        buffer[6] = (mode & S_IXGRP) ? 'x' : '-';
-    }
-
-    buffer[7] = (mode & S_IROTH) ? 'r' : '-';
-    buffer[8] = (mode & S_IWOTH) ? 'w' : '-';
-
-    if (mode & S_ISVTX) {
-        buffer[9] = (mode & S_IXOTH) ? 't' : 'T';
-    } else {
-        buffer[9] = (mode & S_IXOTH) ? 'x' : '-';
-    }
-
-    buffer[10] = '\0';
+    out[0] = type_char(mode);
+    out[1] = (mode & S_IRUSR) ? 'r' : '-';
+    out[2] = (mode & S_IWUSR) ? 'w' : '-';
+    out[3] = (mode & S_IXUSR) ? 'x' : '-';
+    if (mode & S_ISUID) out[3] = (mode & S_IXUSR) ? 's' : 'S';
+    out[4] = (mode & S_IRGRP) ? 'r' : '-';
+    out[5] = (mode & S_IWGRP) ? 'w' : '-';
+    out[6] = (mode & S_IXGRP) ? 'x' : '-';
+    if (mode & S_ISGID) out[6] = (mode & S_IXGRP) ? 's' : 'S';
+    out[7] = (mode & S_IROTH) ? 'r' : '-';
+    out[8] = (mode & S_IWOTH) ? 'w' : '-';
+    out[9] = (mode & S_IXOTH) ? 'x' : '-';
+#ifdef S_ISVTX
+    if (mode & S_ISVTX) out[9] = (mode & S_IXOTH) ? 't' : 'T';
+#endif
+    out[10] = '\0';
 }
 
-static void
-print_owner(uid_t uid, const Options *options)
+static void show_user(uid_t uid, const Config *cfg)
 {
     struct passwd *pw;
 
-    if (options->numeric_ids) {
+    if ((cfg->flags & OPT_NUMERIC) != 0u) {
         printf("%u", (unsigned int)uid);
         return;
     }
 
     pw = getpwuid(uid);
-
     if (pw != NULL) {
         printf("%s", pw->pw_name);
     } else {
@@ -104,18 +70,16 @@ print_owner(uid_t uid, const Options *options)
     }
 }
 
-static void
-print_group(gid_t gid, const Options *options)
+static void show_group(gid_t gid, const Config *cfg)
 {
     struct group *gr;
 
-    if (options->numeric_ids) {
+    if ((cfg->flags & OPT_NUMERIC) != 0u) {
         printf("%u", (unsigned int)gid);
         return;
     }
 
     gr = getgrgid(gid);
-
     if (gr != NULL) {
         printf("%s", gr->gr_name);
     } else {
@@ -123,112 +87,90 @@ print_group(gid_t gid, const Options *options)
     }
 }
 
-static time_t
-entry_time(const FileEntry *entry, const Options *options)
+static time_t item_time(const ListingItem *item, const Config *cfg)
 {
-    if (options->use_ctime) {
-        return entry->st.st_ctime;
+    if ((cfg->flags & OPT_CTIME) != 0u) {
+        return item->info.st_ctime;
     }
-
-    if (options->use_atime) {
-        return entry->st.st_atime;
+    if ((cfg->flags & OPT_ATIME) != 0u) {
+        return item->info.st_atime;
     }
-
-    return entry->st.st_mtime;
+    return item->info.st_mtime;
 }
 
-static void
-print_time(time_t value)
+static void show_time(time_t stamp)
 {
-    char buffer[64];
-    struct tm *tm_info;
+    char text[64];
+    struct tm *local = localtime(&stamp);
 
-    tm_info = localtime(&value);
-
-    if (tm_info == NULL) {
+    if (local == NULL ||
+        strftime(text, sizeof(text), "%b %e %H:%M", local) == 0) {
         printf("??? ?? ??:??");
         return;
     }
 
-    if (strftime(buffer, sizeof(buffer), "%b %e %H:%M",
-                 tm_info) == 0) {
-        printf("??? ?? ??:??");
-        return;
-    }
-
-    printf("%s", buffer);
+    printf("%s", text);
 }
 
-static long long
-block_size(void)
+static long long get_block_size(void)
 {
-    const char *value;
+    const char *env = getenv("BLOCKSIZE");
     char *end;
-    long long result;
+    long long value;
 
-    value = getenv("BLOCKSIZE");
-
-    if (value == NULL || *value == '\0') {
+    if (env == NULL || *env == '\0') {
         return 512;
     }
 
-    result = strtoll(value, &end, 10);
-
-    if (*end != '\0' || result <= 0) {
+    value = strtoll(env, &end, 10);
+    if (*end != '\0' || value <= 0) {
         return 512;
     }
 
-    return result;
+    return value;
 }
 
-static long long
-ceil_div(long long value, long long divisor)
+static long long round_up(long long value, long long unit)
 {
-    if (divisor <= 0) {
+    if (unit <= 0) {
         return value;
     }
-
-    return (value + divisor - 1) / divisor;
+    return (value + unit - 1) / unit;
 }
 
-long long
-entry_blocks(const FileEntry *entry, const Options *options)
+long long blocks_for(const ListingItem *item, const Config *cfg)
 {
     long long bytes;
 
-    if (entry == NULL || options == NULL) {
+    if (item == NULL || cfg == NULL) {
         return 0;
     }
 
-    bytes = (long long)entry->st.st_blocks * 512LL;
+    bytes = (long long)item->info.st_blocks * 512LL;
 
-    if (options->human_readable) {
+    if ((cfg->flags & OPT_HUMAN) != 0u) {
         return bytes;
     }
 
-    if (options->kilobytes) {
-        return ceil_div(bytes, 1024);
+    if ((cfg->flags & OPT_KILOBYTES) != 0u) {
+        return round_up(bytes, 1024);
     }
 
-    return ceil_div(bytes, block_size());
+    return round_up(bytes, get_block_size());
 }
 
-static void
-print_size(long long bytes, const Options *options)
+static void show_size(long long bytes, const Config *cfg)
 {
     static const char units[] = "BKMGTPE";
-    double value;
+    double value = (double)bytes;
     int unit = 0;
 
-    if (!options->human_readable) {
+    if ((cfg->flags & OPT_HUMAN) == 0u) {
         printf("%lld", bytes);
         return;
     }
 
-    value = (double)bytes;
-
-    while (value >= 1024.0 &&
-           unit < (int)(sizeof(units) - 2)) {
+    while (value >= 1024.0 && unit < 6) {
         value /= 1024.0;
         ++unit;
     }
@@ -242,170 +184,135 @@ print_size(long long bytes, const Options *options)
     }
 }
 
-static void
-print_name(const char *name, const Options *options)
+static void show_name(const char *name, const Config *cfg)
 {
-    const unsigned char *p;
+    const unsigned char *ptr;
 
     if (name == NULL) {
         return;
     }
 
-    if (options->raw ||
-        (!options->quote && !options->raw && !isatty(STDOUT_FILENO))) {
+    if ((cfg->flags & OPT_RAW) != 0u ||
+        ((cfg->flags & (OPT_QUOTE | OPT_RAW)) == 0u &&
+         !isatty(STDOUT_FILENO))) {
         printf("%s", name);
         return;
     }
 
-    p = (const unsigned char *)name;
-
-    while (*p != '\0') {
-        if (isprint(*p)) {
-            putchar(*p);
-        } else {
-            putchar('?');
-        }
-
-        ++p;
+    ptr = (const unsigned char *)name;
+    while (*ptr != '\0') {
+        putchar(isprint(*ptr) ? *ptr : '?');
+        ++ptr;
     }
 }
 
-static char
-classify_suffix(mode_t mode)
+static char suffix_for(mode_t mode)
 {
-    if (S_ISDIR(mode)) {
-        return '/';
-    }
-
-    if (S_ISLNK(mode)) {
-        return '@';
-    }
-
-    if (S_ISFIFO(mode)) {
-        return '|';
-    }
-
-    if (S_ISSOCK(mode)) {
-        return '=';
-    }
-
-#ifdef S_ISWHT
-    if (S_ISWHT(mode)) {
-        return '%';
-    }
+    if (S_ISDIR(mode)) return '/';
+    if (S_ISLNK(mode)) return '@';
+    if (S_ISFIFO(mode)) return '|';
+#ifdef S_ISSOCK
+    if (S_ISSOCK(mode)) return '=';
 #endif
-
-    if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
-        return '*';
-    }
-
+#ifdef S_ISWHT
+    if (S_ISWHT(mode)) return '%';
+#endif
+    if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) return '*';
     return '\0';
 }
 
-static void
-print_symlink_target(const FileEntry *entry)
+static void show_link_target(const ListingItem *item)
 {
-    char buffer[4096];
-    ssize_t length;
+    char target[4096];
+    ssize_t size;
 
-    if (!S_ISLNK(entry->st.st_mode)) {
+    if (!S_ISLNK(item->info.st_mode)) {
         return;
     }
 
-    length = readlink(entry->path, buffer, sizeof(buffer) - 1);
-
-    if (length < 0) {
+    size = readlink(item->full_name, target, sizeof(target) - 1);
+    if (size < 0) {
         return;
     }
 
-    buffer[length] = '\0';
-
-    printf(" -> %s", buffer);
+    target[size] = '\0';
+    printf(" -> %s", target);
 }
 
-static void
-print_long(const FileEntry *entry, const Options *options)
+static void render_long(const ListingItem *item, const Config *cfg)
 {
     char mode[11];
+    char suffix;
 
-    format_mode(entry->st.st_mode, mode);
+    make_mode(item->info.st_mode, mode);
 
-    printf("%s %3lu ",
-           mode,
-           (unsigned long)entry->st.st_nlink);
+    printf("%s %3lu ", mode, (unsigned long)item->info.st_nlink);
+    show_user(item->info.st_uid, cfg);
+    putchar(' ');
+    show_group(item->info.st_gid, cfg);
+    putchar(' ');
 
-    print_owner(entry->st.st_uid, options);
-    printf(" ");
-
-    print_group(entry->st.st_gid, options);
-    printf(" ");
-
-    if (S_ISCHR(entry->st.st_mode) ||
-        S_ISBLK(entry->st.st_mode)) {
+    if (S_ISCHR(item->info.st_mode) || S_ISBLK(item->info.st_mode)) {
+#ifdef major
         printf("%8u,%3u ",
-               (unsigned int)major(entry->st.st_rdev),
-               (unsigned int)minor(entry->st.st_rdev));
-    } else if (options->human_readable) {
-        print_size((long long)entry->st.st_size, options);
-        printf(" ");
+               (unsigned int)major(item->info.st_rdev),
+               (unsigned int)minor(item->info.st_rdev));
+#else
+        printf("%8u,%3u ", 0u, 0u);
+#endif
+    } else if ((cfg->flags & OPT_HUMAN) != 0u) {
+        show_size((long long)item->info.st_size, cfg);
+        putchar(' ');
     } else {
-        printf("%8lld ", (long long)entry->st.st_size);
+        printf("%8lld ", (long long)item->info.st_size);
     }
 
-    print_time(entry_time(entry, options));
-    printf(" ");
+    show_time(item_time(item, cfg));
+    putchar(' ');
+    show_name(item->label, cfg);
 
-    print_name(entry->name, options);
-
-    if (options->classify) {
-        char suffix = classify_suffix(entry->st.st_mode);
-
+    if ((cfg->flags & OPT_CLASSIFY) != 0u) {
+        suffix = suffix_for(item->info.st_mode);
         if (suffix != '\0') {
             putchar(suffix);
         }
     }
 
-    print_symlink_target(entry);
-
+    show_link_target(item);
     putchar('\n');
 }
 
-void
-print_entry(const FileEntry *entry, const Options *options)
+void render_item(const ListingItem *item, const Config *cfg)
 {
     char suffix;
 
-    if (entry == NULL || options == NULL) {
+    if (item == NULL || cfg == NULL) {
         return;
     }
 
-    if (options->inode) {
-        printf("%llu ",
-               (unsigned long long)entry->st.st_ino);
+    if ((cfg->flags & OPT_INODE) != 0u) {
+        printf("%llu ", (unsigned long long)item->info.st_ino);
     }
 
-    if (options->blocks) {
-        long long blocks = entry_blocks(entry, options);
-
-        if (options->human_readable) {
-            print_size(blocks, options);
+    if ((cfg->flags & OPT_BLOCKS) != 0u) {
+        long long value = blocks_for(item, cfg);
+        if ((cfg->flags & OPT_HUMAN) != 0u) {
+            show_size(value, cfg);
         } else {
-            printf("%lld", blocks);
+            printf("%lld", value);
         }
-
-        printf(" ");
+        putchar(' ');
     }
 
-    if (options->long_format || options->numeric_ids) {
-        print_long(entry, options);
+    if ((cfg->flags & (OPT_LONG | OPT_NUMERIC)) != 0u) {
+        render_long(item, cfg);
         return;
     }
 
-    print_name(entry->name, options);
+    show_name(item->label, cfg);
 
-    if (options->classify) {
-        suffix = classify_suffix(entry->st.st_mode);
-
+    if ((cfg->flags & OPT_CLASSIFY) != 0u) {
+        suffix = suffix_for(item->info.st_mode);
         if (suffix != '\0') {
             putchar(suffix);
         }
@@ -414,20 +321,18 @@ print_entry(const FileEntry *entry, const Options *options)
     putchar('\n');
 }
 
-void
-print_total(long long total, const Options *options)
+void render_total(long long total, const Config *cfg)
 {
-    if (options == NULL) {
+    if (cfg == NULL) {
         return;
     }
 
     printf("total ");
-
-    if (options->human_readable) {
-        print_size(total, options);
+    if ((cfg->flags & OPT_HUMAN) != 0u) {
+        show_size(total, cfg);
     } else {
         printf("%lld", total);
     }
-
     putchar('\n');
 }
+
