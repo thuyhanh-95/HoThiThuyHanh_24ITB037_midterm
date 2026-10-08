@@ -1,379 +1,224 @@
-# myls - System Programming Midterm
+# myls
 
-A simplified implementation of the NetBSD `ls(1)` command written in C for the System Programming midterm project.
+**Author:** Ho Thi Thuy Hanh  
+**Student ID:** 24ITB037
 
 ---
 
-## 1. Student Information
+## About
 
-| Information | Details |
+`myls` follows the behaviour described in the **NetBSD 10.1 `ls(1)` manual**, covering the most commonly used options rather than the full feature set.
+
+What it can do:
+
+- show files and directories, with or without extra detail
+- reveal or hide dot-files
+- order output by name, size, or time
+- print inode numbers and block usage
+- walk directory trees recursively
+- mark entries by type
+- deal safely with unprintable characters in names
+- accept several options at once
+
+How operands are treated:
+
+| Operand | Result |
 |---|---|
-| **Name** | Ho Thi Thuy Hanh |
-| **Student ID** | 24ITB037 |
+| none | contents of the current directory |
+| a directory | contents of that directory |
+| a file | information about that file only |
 
 ---
 
-## 2. Project Description
+## Quick Start
 
-This project implements a simplified version of the NetBSD `ls(1)` command in the C programming language.
-
-The program is named **`myls`** and is developed based on the provided **NetBSD 10.1 `ls(1)` manual**.
-
-The main purpose of `myls` is to:
-
-- List files and directories.
-- Display detailed file information.
-- Handle hidden files.
-- Sort entries using different criteria.
-- Display inode and block information.
-- Support recursive directory traversal.
-- Classify different file types.
-- Handle non-printable characters.
-- Process multiple command-line options.
-
-When the operand is a file, the program displays information about that file.
-
-When the operand is a directory, the program lists the contents of that directory.
-
-When no operand is specified, the program lists the contents of the current directory.
-
----
-
-## 3. Supported Options
-
-The program supports the following options:
-
-| Option | Description |
-|---|---|
-| `-A` | Display all entries except `.` and `..`. |
-| `-a` | Include hidden entries whose names begin with `.`. |
-| `-c` | Use file status change time instead of modification time. |
-| `-d` | Display the directory itself instead of listing its contents. |
-| `-F` | Append a symbol indicating the file type. |
-| `-f` | Disable sorting. |
-| `-h` | Display file sizes in human-readable format. |
-| `-i` | Display the inode number. |
-| `-k` | Display block sizes in kilobytes. |
-| `-l` | Display information in long format. |
-| `-n` | Display numeric UID and GID instead of owner and group names. |
-| `-q` | Replace non-printable characters in file names with `?`. |
-| `-R` | Recursively list subdirectories. |
-| `-r` | Reverse the sorting order. |
-| `-S` | Sort entries by file size, largest first. |
-| `-s` | Display the number of file system blocks used. |
-| `-t` | Sort entries by modification time, newest first. |
-| `-u` | Use access time instead of modification time. |
-| `-w` | Display non-printable characters in raw form. |
-
----
-
-## 4. Usage
-
-### 4.1 General Syntax
-
-```text
-./myls [options] [file ...]
-```
-
-### 4.2 Basic Usage
-
-List the current directory:
-
-```sh
-./myls
-```
-
-List the contents of the `tests` directory:
-
-```sh
-./myls tests
-```
-
-Display information about a specific file:
-
-```sh
-./myls tests/alpha.txt
-```
-
-### 4.3 Hidden Files
-
-Display hidden files:
-
-```sh
-./myls -a tests
-```
-
-Display hidden files except `.` and `..`:
-
-```sh
-./myls -A tests
-```
-
-### 4.4 Long Format
-
-Display detailed information:
-
-```sh
-./myls -l tests
-```
-
-Display human-readable sizes:
-
-```sh
-./myls -lh tests
-```
-
-Display numeric UID and GID:
-
-```sh
-./myls -n tests
-```
-
-### 4.5 Sorting
-
-Sort by file size:
-
-```sh
-./myls -S tests
-```
-
-Sort by file size in reverse order:
-
-```sh
-./myls -Sr tests
-```
-
-Sort by modification time:
-
-```sh
-./myls -t tests
-```
-
-Reverse the sorting order:
-
-```sh
-./myls -tr tests
-```
-
-Disable sorting:
-
-```sh
-./myls -f tests
-```
-
-### 4.6 File Information
-
-Display inode numbers:
-
-```sh
-./myls -i tests
-```
-
-Display block usage:
-
-```sh
-./myls -s tests
-```
-
-Display block usage in kilobytes:
-
-```sh
-./myls -sk tests
-```
-
-### 4.7 Recursive and Directory Modes
-
-Recursively list subdirectories:
-
-```sh
-./myls -R tests
-```
-
-Display the directory itself:
-
-```sh
-./myls -d tests
-```
-
-### 4.8 File Classification
-
-Display file type indicators:
-
-```sh
-./myls -F tests
-```
-
-The program uses the following indicators:
-
-| Symbol | File Type |
-|---|---|
-| `/` | Directory |
-| `*` | Executable file |
-| `@` | Symbolic link |
-| `\|` | FIFO |
-| `=` | Socket |
-
-### 4.9 Non-printable Characters
-
-Replace non-printable characters with `?`:
-
-```sh
-./myls -q tests
-```
-
-Display non-printable characters in raw form:
-
-```sh
-./myls -w tests
-```
-
-### 4.10 Time Selection
-
-Use modification time:
-
-```sh
-./myls -lt tests
-```
-
-Use access time:
-
-```sh
-./myls -ltu tests
-```
-
-Use status change time:
-
-```sh
-./myls -ltc tests
-```
-
----
-
-## 5. Module Description
-
-### 5.1 `main.c`
-
-Responsible for:
-
-- Program initialization.
-- Processing command-line arguments.
-- Handling file and directory operands.
-- Calling the appropriate processing functions.
-
-### 5.2 `options.c`
-
-Responsible for:
-
-- Parsing command-line options.
-- Storing option states.
-- Handling option precedence.
-
-### 5.3 `listing.c`
-
-Responsible for:
-
-- Opening and reading directories.
-- Filtering hidden files.
-- Retrieving file metadata.
-- Processing directory entries.
-- Recursive directory traversal.
-
-### 5.4 `sorting.c`
-
-Responsible for:
-
-- Sorting entries by name.
-- Sorting entries by file size.
-- Sorting entries by time.
-- Reversing the sorting order.
-- Disabling sorting when `-f` is specified.
-
-### 5.5 `display.c`
-
-Responsible for:
-
-- Normal output.
-- Long-format output.
-- File size formatting.
-- Inode display.
-- Block display.
-- Owner and group display.
-- File classification.
-- Symbolic-link target display.
-- Non-printable character handling.
-
-### 5.6 `include/`
-
-Contains the header files used by the source modules.
-
-### 5.7 `tests/`
-
-Contains files and directories used for functional testing.
-
-The test set includes regular files, hidden files, files with different sizes, an executable file, a symbolic link, a FIFO, nested directories, and a file containing a non-printable character.
-
----
-
-## 6. Compilation
-
-The project uses the provided Makefile.
-
-### 6.1 Build the Program
+Compile:
 
 ```sh
 make
 ```
 
-### 6.2 Clean Compiled Files
+Remove build output:
 
 ```sh
 make clean
 ```
 
-After successful compilation, the executable is:
+The build produces a single executable called `myls`. Run it as:
 
 ```text
-myls
+./myls [options] [file ...]
 ```
 
 ---
 
-## 7. Testing
+## Option Reference
 
-The program was tested on NetBSD using the following test cases.
+### Which entries are shown
 
-### 7.1 Basic Listing
+| Flag | Effect |
+|---|---|
+| `-a` | include entries starting with `.` |
+| `-A` | like `-a`, but leave out `.` and `..` |
+| `-d` | show a directory itself, not what is inside it |
+| `-R` | descend into subdirectories |
+
+### Ordering
+
+| Flag | Effect |
+|---|---|
+| `-f` | no sorting at all |
+| `-r` | reverse the current order |
+| `-S` | largest files first |
+| `-t` | newest files first |
+
+### Which timestamp is used
+
+| Flag | Effect |
+|---|---|
+| `-c` | status change time |
+| `-u` | last access time |
+
+Without either flag, the modification time is used.
+
+### What is printed
+
+| Flag | Effect |
+|---|---|
+| `-l` | long listing |
+| `-h` | human-readable sizes |
+| `-n` | numeric UID/GID rather than names |
+| `-i` | inode number |
+| `-s` | number of blocks used |
+| `-k` | block counts in kilobytes |
+| `-F` | type marker after each name |
+| `-q` | show unprintable characters as `?` |
+| `-w` | show unprintable characters unchanged |
+
+---
+
+## Examples
+
+All examples use the `tests` directory that ships with the project.
+
+### Everyday listing
+
+| Command | What you get |
+|---|---|
+| `./myls` | the current directory |
+| `./myls tests` | everything inside `tests` |
+| `./myls tests/alpha.txt` | details of one file |
+
+### Dot-files
+
+| Command | What you get |
+|---|---|
+| `./myls -a tests` | all entries, including `.` and `..` |
+| `./myls -A tests` | all entries except `.` and `..` |
+
+### Long format
+
+| Command | What you get |
+|---|---|
+| `./myls -l tests` | full details per entry |
+| `./myls -lh tests` | the same, with readable sizes |
+| `./myls -n tests` | numeric owner and group IDs |
+
+### Sorting
+
+| Command | What you get |
+|---|---|
+| `./myls -S tests` | sorted by size |
+| `./myls -Sr tests` | sorted by size, smallest first |
+| `./myls -t tests` | sorted by modification time |
+| `./myls -tr tests` | sorted by time, oldest first |
+| `./myls -f tests` | directory order, unsorted |
+
+### Inodes and blocks
+
+| Command | What you get |
+|---|---|
+| `./myls -i tests` | inode number before each name |
+| `./myls -s tests` | block usage per entry |
+| `./myls -sk tests` | block usage in kilobytes |
+
+### Recursion and directory mode
+
+| Command | What you get |
+|---|---|
+| `./myls -R tests` | `tests` and all subdirectories |
+| `./myls -d tests` | only `tests` itself |
+
+### Type markers
+
+`./myls -F tests` appends one of these characters:
+
+| Marker | Meaning |
+|---|---|
+| `/` | directory |
+| `*` | executable file |
+| `@` | symbolic link |
+| `\|` | FIFO |
+| `=` | socket |
+
+### Unprintable characters
+
+| Command | What you get |
+|---|---|
+| `./myls -q tests` | `?` in place of unprintable bytes |
+| `./myls -w tests` | bytes printed as they are |
+
+### Choosing the timestamp
+
+| Command | What you get |
+|---|---|
+| `./myls -lt tests` | modification time |
+| `./myls -ltu tests` | access time |
+| `./myls -ltc tests` | status change time |
+
+---
+
+## Source Layout
+
+| File | Role |
+|---|---|
+| `src/main.c` | startup, argument handling, deciding whether each operand is a file or a directory, and dispatching the work |
+| `src/options.c` | reading flags, remembering which are active, and resolving conflicts between them |
+| `src/listing.c` | reading directories, skipping hidden entries when needed, collecting metadata, and recursing into subdirectories |
+| `src/sorting.c` | ordering by name, size or time, reversing, and skipping the sort for `-f` |
+| `src/display.c` | all output: short and long formats, size formatting, inode and block columns, owner and group, type markers, link targets, and unprintable characters |
+| `include/` | headers shared by the source files |
+| `tests/` | sample files used for manual testing |
+
+`tests` contains ordinary files, dot-files, files of different sizes, an executable, a symbolic link, a FIFO, nested directories, and a file with an unprintable character in its name.
+
+---
+
+## Verification
+
+`myls` was checked by hand on NetBSD. Expand a group below to see the commands that were run.
+
+<details>
+<summary><b>Basic, hidden files, long format</b></summary>
 
 ```sh
 ./myls tests
-```
-
-### 7.2 Hidden Files
-
-```sh
 ./myls -a tests
 ./myls -A tests
-```
-
-### 7.3 Long Format
-
-```sh
 ./myls -l tests
 ./myls -lh tests
 ./myls -n tests
 ```
 
-### 7.4 Inode and Block Information
+</details>
+
+<details>
+<summary><b>Inodes, blocks, sorting</b></summary>
 
 ```sh
 ./myls -i tests
 ./myls -s tests
 ./myls -sk tests
-```
-
-### 7.5 Sorting
-
-```sh
 ./myls -S tests
 ./myls -Sr tests
 ./myls -t tests
@@ -381,37 +226,26 @@ The program was tested on NetBSD using the following test cases.
 ./myls -f tests
 ```
 
-### 7.6 Recursive and Directory Modes
+</details>
+
+<details>
+<summary><b>Recursion, type markers, unprintable characters, timestamps</b></summary>
 
 ```sh
 ./myls -R tests
 ./myls -d tests
-```
-
-### 7.7 File Classification
-
-```sh
 ./myls -F tests
-```
-
-### 7.8 Non-printable Characters
-
-```sh
 ./myls -q tests
 ./myls -w tests
-```
-
-### 7.9 Time Selection
-
-```sh
 ./myls -lt tests
 ./myls -ltu tests
 ./myls -ltc tests
 ```
 
-### 7.10 Option Precedence
+</details>
 
-The following combinations were tested:
+<details>
+<summary><b>Combined options</b></summary>
 
 ```sh
 ./myls -ln tests
@@ -424,46 +258,46 @@ The following combinations were tested:
 ./myls -ltcu tests
 ```
 
-For option pairs that override each other, the last specified option determines the final behavior.
+When two options conflict, the one given last wins.
 
-### 7.11 BLOCKSIZE
+</details>
 
-The `BLOCKSIZE` environment variable was tested using:
+<details>
+<summary><b>BLOCKSIZE environment variable</b></summary>
 
 ```sh
 BLOCKSIZE=1024 ./myls -s tests
-```
-
-and:
-
-```sh
 BLOCKSIZE=4096 ./myls -s tests
 ```
 
-The block count changes according to the selected block size.
+The reported block counts change with the chosen block size.
 
-### 7.12 Error Handling
+</details>
 
-An invalid file path was tested:
+<details>
+<summary><b>Error handling</b></summary>
 
 ```sh
 ./myls tests/not_found
 ```
 
-Expected output:
+Expected message:
 
 ```text
 myls: tests/not_found: No such file or directory
 ```
 
-The exit status was then checked:
+Then check the exit status:
 
 ```sh
 echo $?
 ```
 
-Expected result:
+Expected value:
 
 ```text
 1
 ```
+
+</details>
+
