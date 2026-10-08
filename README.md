@@ -69,11 +69,13 @@ The program supports the following options:
 
 ## 4. Usage
 
-### General Syntax
+### 4.1 General Syntax
 
 ```text
 ./myls [options] [file ...]
-## 4.2 Basic Usage
+```
+
+### 4.2 Basic Usage
 
 List the current directory:
 
@@ -93,7 +95,7 @@ Display information about a specific file:
 ./myls tests/alpha.txt
 ```
 
-## 4.3 Hidden Files
+### 4.3 Hidden Files
 
 Display hidden files:
 
@@ -107,7 +109,7 @@ Display hidden files except `.` and `..`:
 ./myls -A tests
 ```
 
-## 4.4 Long Format
+### 4.4 Long Format
 
 Display detailed information:
 
@@ -127,7 +129,7 @@ Display numeric UID and GID:
 ./myls -n tests
 ```
 
-## 4.5 Sorting
+### 4.5 Sorting
 
 Sort by file size:
 
@@ -159,7 +161,7 @@ Disable sorting:
 ./myls -f tests
 ```
 
-## 4.6 File Information
+### 4.6 File Information
 
 Display inode numbers:
 
@@ -179,7 +181,7 @@ Display block usage in kilobytes:
 ./myls -sk tests
 ```
 
-## 4.7 Recursive and Directory Modes
+### 4.7 Recursive and Directory Modes
 
 Recursively list subdirectories:
 
@@ -193,7 +195,7 @@ Display the directory itself:
 ./myls -d tests
 ```
 
-## 4.8 File Classification
+### 4.8 File Classification
 
 Display file type indicators:
 
@@ -203,15 +205,15 @@ Display file type indicators:
 
 The program uses the following indicators:
 
-| Symbol | File Type       |
-|--------|-----------------|
-| `/`    | Directory       |
-| `*`    | Executable file |
-| `@`    | Symbolic link   |
-| `\|`   | FIFO            |
-| `=`    | Socket          |
+| Symbol | File Type |
+|---|---|
+| `/` | Directory |
+| `*` | Executable file |
+| `@` | Symbolic link |
+| `\|` | FIFO |
+| `=` | Socket |
 
-## 4.9 Non-printable Characters
+### 4.9 Non-printable Characters
 
 Replace non-printable characters with `?`:
 
@@ -225,7 +227,7 @@ Display non-printable characters in raw form:
 ./myls -w tests
 ```
 
-## 4.10 Time Selection
+### 4.10 Time Selection
 
 Use modification time:
 
@@ -245,45 +247,11 @@ Use status change time:
 ./myls -ltc tests
 ```
 
-## 5. Project Structure
+---
 
-```text
-myls/
-├── .gitignore
-├── Makefile
-├── README.md
-├── include/
-│   ├── display.h
-│   ├── listing.h
-│   ├── options.h
-│   └── sorting.h
-├── src/
-│   ├── display.c
-│   ├── listing.c
-│   ├── main.c
-│   ├── options.c
-│   └── sorting.c
-└── tests/
-    ├── .env_sample
-    ├── alpha.txt
-    ├── beta.log
-    ├── huge.dat
-    ├── middle.dat
-    ├── notes.md
-    ├── pipe_test
-    ├── runme
-    ├── shortcut
-    ├── tiny.dat
-    ├── docs/
-    │   └── report.txt
-    └── nested/
-        └── level2/
-            └── deep.txt
-```
+## 5. Module Description
 
-## 6. Module Description
-
-### `main.c`
+### 5.1 `main.c`
 
 Responsible for:
 
@@ -292,7 +260,7 @@ Responsible for:
 - Handling file and directory operands.
 - Calling the appropriate processing functions.
 
-### `options.c`
+### 5.2 `options.c`
 
 Responsible for:
 
@@ -300,7 +268,7 @@ Responsible for:
 - Storing option states.
 - Handling option precedence.
 
-### `listing.c`
+### 5.3 `listing.c`
 
 Responsible for:
 
@@ -310,7 +278,7 @@ Responsible for:
 - Processing directory entries.
 - Recursive directory traversal.
 
-### `sorting.c`
+### 5.4 `sorting.c`
 
 Responsible for:
 
@@ -320,7 +288,7 @@ Responsible for:
 - Reversing the sorting order.
 - Disabling sorting when `-f` is specified.
 
-### `display.c`
+### 5.5 `display.c`
 
 Responsible for:
 
@@ -334,27 +302,29 @@ Responsible for:
 - Symbolic-link target display.
 - Non-printable character handling.
 
-### `include/`
+### 5.6 `include/`
 
 Contains the header files used by the source modules.
 
-### `tests/`
+### 5.7 `tests/`
 
 Contains files and directories used for functional testing.
 
 The test set includes regular files, hidden files, files with different sizes, an executable file, a symbolic link, a FIFO, nested directories, and a file containing a non-printable character.
 
-## 7. Compilation
+---
+
+## 6. Compilation
 
 The project uses the provided Makefile.
 
-Build the program:
+### 6.1 Build the Program
 
 ```sh
 make
 ```
 
-Clean compiled files:
+### 6.2 Clean Compiled Files
 
 ```sh
 make clean
@@ -366,24 +336,26 @@ After successful compilation, the executable is:
 myls
 ```
 
-## 8. Testing
+---
+
+## 7. Testing
 
 The program was tested on NetBSD using the following test cases.
 
-### 8.1 Basic Listing
+### 7.1 Basic Listing
 
 ```sh
 ./myls tests
 ```
 
-### 8.2 Hidden Files
+### 7.2 Hidden Files
 
 ```sh
 ./myls -a tests
 ./myls -A tests
 ```
 
-### 8.3 Long Format
+### 7.3 Long Format
 
 ```sh
 ./myls -l tests
@@ -391,7 +363,7 @@ The program was tested on NetBSD using the following test cases.
 ./myls -n tests
 ```
 
-### 8.4 Inode and Block Information
+### 7.4 Inode and Block Information
 
 ```sh
 ./myls -i tests
@@ -399,7 +371,7 @@ The program was tested on NetBSD using the following test cases.
 ./myls -sk tests
 ```
 
-### 8.5 Sorting
+### 7.5 Sorting
 
 ```sh
 ./myls -S tests
@@ -409,27 +381,27 @@ The program was tested on NetBSD using the following test cases.
 ./myls -f tests
 ```
 
-### 8.6 Recursive and Directory Modes
+### 7.6 Recursive and Directory Modes
 
 ```sh
 ./myls -R tests
 ./myls -d tests
 ```
 
-### 8.7 File Classification
+### 7.7 File Classification
 
 ```sh
 ./myls -F tests
 ```
 
-### 8.8 Non-printable Characters
+### 7.8 Non-printable Characters
 
 ```sh
 ./myls -q tests
 ./myls -w tests
 ```
 
-### 8.9 Time Selection
+### 7.9 Time Selection
 
 ```sh
 ./myls -lt tests
@@ -437,7 +409,7 @@ The program was tested on NetBSD using the following test cases.
 ./myls -ltc tests
 ```
 
-### 8.10 Option Precedence
+### 7.10 Option Precedence
 
 The following combinations were tested:
 
@@ -454,7 +426,7 @@ The following combinations were tested:
 
 For option pairs that override each other, the last specified option determines the final behavior.
 
-### 8.11 BLOCKSIZE
+### 7.11 BLOCKSIZE
 
 The `BLOCKSIZE` environment variable was tested using:
 
@@ -470,7 +442,7 @@ BLOCKSIZE=4096 ./myls -s tests
 
 The block count changes according to the selected block size.
 
-### 8.12 Error Handling
+### 7.12 Error Handling
 
 An invalid file path was tested:
 
